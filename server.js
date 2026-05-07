@@ -6,13 +6,40 @@ app.use(express.json());
 
 app.post("/notify", async (req, res) => {
 
-  const { phone, message } = req.body;
+  try {
 
-  console.log(phone, message);
+    const { phone, message } = req.body;
 
-  res.json({
-    success: true
-  });
+    const response = await fetch(
+      `https://graph.facebook.com/v22.0/${process.env.PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: phone,
+          type: "text",
+          text: {
+            body: message
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    res.json(data);
+
+  } catch (error) {
+
+    res.status(500).json({
+      error: error.message
+    });
+
+  }
 
 });
 
