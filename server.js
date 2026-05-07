@@ -3,6 +3,8 @@ import makeWASocket, {
   useMultiFileAuthState
 } from "@whiskeysockets/baileys";
 
+import QRCode from "qrcode";
+
 const app = express();
 
 app.use(express.json());
@@ -14,20 +16,29 @@ async function connectWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState("auth");
 
   sock = makeWASocket({
-    auth: state
+    auth: state,
+    printQRInTerminal: false
   });
 
   sock.ev.on("creds.update", saveCreds);
 
-  sock.ev.on("connection.update", ({ connection, qr }) => {
+  sock.ev.on("connection.update", async ({ connection, qr }) => {
 
     if (qr) {
-      console.log("COLE ESSE QR EM UM GERADOR:");
-      console.log(qr);
+
+      console.log("ESCANEIE O QR:");
+
+      const qrImage = await QRCode.toString(qr, {
+        type: "terminal",
+        small: true
+      });
+
+      console.log(qrImage);
+
     }
 
     if (connection === "open") {
-      console.log("WhatsApp conectado");
+      console.log("WHATSAPP CONECTADO");
     }
 
   });
