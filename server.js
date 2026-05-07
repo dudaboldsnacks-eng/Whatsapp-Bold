@@ -1,18 +1,65 @@
 import express from "express";
+import makeWASocket, {
+  useMultiFileAuthState
+} from "@whiskeysockets/baileys";
 
 const app = express();
 
 app.use(express.json());
 
+let sock;
+
+async function connectWhatsApp() {
+
+  const { state, saveCreds } = await useMultiFileAuthState("auth");
+
+  sock = makeWASocket({
+    auth: state
+  });
+
+  sock.ev.on("creds.update", saveCreds);
+
+  sock.ev.on("connection.update", ({ connection, qr }) => {
+
+    if (qr) {
+      console.log("COLE ESSE QR EM UM GERADOR:");
+      console.log(qr);
+    }
+
+    if (connection === "open") {
+      console.log("WhatsApp conectado");
+    }
+
+  });
+
+}
+
+connectWhatsApp();
+
 app.post("/notify", async (req, res) => {
 
-  const { phone, message } = req.body;
+  try {
 
-  console.log(phone, message);
+    const { phone, message } = req.body;
 
-  res.json({
-    success: true
-  });
+    await sock.sendMessage(
+      `${phone}@s.whatsapp.net`,
+      {
+        text: message
+      }
+    );
+
+    res.json({
+      success: true
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      error: error.message
+    });
+
+  }
 
 });
 
