@@ -13,6 +13,9 @@ app.use((req, res, next) => {
 
   const apiKey = req.headers["x-api-key"];
 
+  console.log("HEADER RECEBIDO:", apiKey);
+  console.log("API_KEY RAILWAY:", process.env.API_KEY);
+
   if (apiKey !== process.env.API_KEY) {
     return res.status(401).json({
       error: "API KEY inválida"
@@ -79,6 +82,8 @@ app.post("/notify", async (req, res) => {
     });
 
   } catch (error) {
+
+    console.log(error);
 
     res.status(500).json({
       error: error.message
