@@ -1,8 +1,68 @@
 import express from "express";
+import makeWASocket, {
+  useMultiFileAuthState
+} from "@whiskeysockets/baileys";
+
+import QRCode from "qrcode";
 
 const app = express();
 
 app.use(express.json());
+
+app.use((req, res, next) => {
+
+  const apiKey = req.headers["x-api-key"];
+
+  console.log("HEADER RECEBIDO:", apiKey);
+  console.log("API_KEY RAILWAY:", process.env.API_KEY);
+
+  if (apiKey !== process.env.API_KEY) {
+    return res.status(401).json({
+      error: "API KEY inválida"
+    });
+  }
+
+  next();
+
+});
+
+let sock;
+
+async function connectWhatsApp() {
+
+  const { state, saveCreds } = await useMultiFileAuthState("auth");
+
+  sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: false
+  });
+
+  sock.ev.on("creds.update", saveCreds);
+
+  sock.ev.on("connection.update", async ({ connection, qr }) => {
+
+    if (qr) {
+
+      console.log("ESCANEIE O QR:");
+
+      const qrImage = await QRCode.toString(qr, {
+        type: "terminal",
+        small: true
+      });
+
+      console.log(qrImage);
+
+    }
+
+    if (connection === "open") {
+      console.log("WHATSAPP CONECTADO");
+    }
+
+  });
+
+}
+
+connectWhatsApp();
 
 app.post("/notify", async (req, res) => {
 
@@ -10,30 +70,20 @@ app.post("/notify", async (req, res) => {
 
     const { phone, message } = req.body;
 
-    const response = await fetch(
-      `https://graph.facebook.com/v22.0/${process.env.PHONE_NUMBER_ID}/messages`,
+    await sock.sendMessage(
+      `${phone}@s.whatsapp.net`,
       {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.TOKEN}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: phone,
-          type: "text",
-          text: {
-            body: message
-          }
-        })
+        text: message
       }
     );
 
-    const data = await response.json();
-
-    res.json(data);
+    res.json({
+      success: true
+    });
 
   } catch (error) {
+
+    console.log(error);
 
     res.status(500).json({
       error: error.message
